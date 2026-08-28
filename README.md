@@ -1,7 +1,7 @@
 # aiquokka
 
 One command to see the usage limits of all your AI coding subscriptions —
-Claude, Codex, Kimi, Copilot, Grok, DeepSeek, Kiro, and Antigravity — reading the credentials each official CLI
+Claude, Codex, Kimi, Copilot, Grok, DeepSeek, Kiro, Antigravity, and Z.ai — reading the credentials each official CLI
 already stores (or your existing API key). No tokens to paste, no config.
 
 ![aiquokka demo](docs/demo.gif)
@@ -40,6 +40,7 @@ aiquokka copilot   # copilot chat/completions limits
 aiquokka deepseek  # account balance (remaining money)
 aiquokka kiro      # Kiro CLI monthly credits and overage status
 aiquokka agy       # daily antigravity limits
+aiquokka zai       # Z.ai usage bundles and cash balance
 
 aiquokka --watch           # refresh all providers every 60s
 aiquokka claude -w         # watch a single provider
@@ -121,6 +122,7 @@ machine and queries the same usage endpoint that CLI uses.
 | `deepseek` | `$DEEPSEEK_API_KEY` | `api.deepseek.com/user/balance` |
 | `kiro`   | Kiro CLI credential store (via `kiro-cli /usage`) | `q.<region>.amazonaws.com/getUsageLimits` |
 | `agy`    | `~/.gemini/antigravity-cli/antigravity-oauth-token` | `daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` |
+| `zai`    | `$ZAI_API_KEY`, or the zai provider in `~/.pi/agent/models.json` | `api.z.ai/api/biz/tokenAccounts/list/my`, `api.z.ai/api/biz/account/query-customer-account-report` |
 
 Every provider that uses a short-lived OAuth access token (all except the
 static API-key providers Kimi and DeepSeek) **refreshes automatically** when
@@ -154,6 +156,7 @@ Per-provider notes:
 - **DeepSeek** reads `DEEPSEEK_API_KEY` (sk-…) and reports the account balance. The balance is money, not a usage limit, so the bar is full while any balance remains and empties at zero — the amount is the number that matters. The granted and topped-up portions are shown beneath it.
 - **Kiro** runs the installed CLI’s built-in `/usage` command non-interactively, so Kiro retains ownership of credentials and token refresh. It reports monthly credits, plan, reset date, and overage status.
 - **Antigravity** reads the OAuth token stored in `~/.gemini/antigravity-cli/antigravity-oauth-token` and impersonates the CLI's first-party OAuth client to access the restricted quota endpoint.
+- **Z.ai** reports the prepaid usage bundles (resource packages) as used/total token bars plus the pay-as-you-go cash balance. Bundles are model-specific — a bundle for `glm-5.3` stays untouched while requests to `glm-5.3-flash` burn cash — so check the "Applies to" fact if your cash drains faster than expected. The key is the Zhipu `{id}.{secret}` form; it is turned into a signed JWT locally. On the China platform, set `ZAI_BASE_URL=https://open.bigmodel.cn/api` (balance is then shown as CNY).
 
 ## Caveats
 

@@ -12,6 +12,7 @@ import (
 	"github.com/McKean/aiquokka/internal/grok"
 	"github.com/McKean/aiquokka/internal/kimi"
 	"github.com/McKean/aiquokka/internal/kiro"
+	"github.com/McKean/aiquokka/internal/zai"
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +26,7 @@ var allProviders = []provider{
 	{name: "DeepSeek", fetch: deepseek.Fetch},
 	{name: "Kiro", fetch: kiro.Fetch},
 	{name: "Antigravity", fetch: antigravity.Fetch},
+	{name: "Z.ai", fetch: zai.Fetch},
 }
 
 // Global output-format flags: emit raw structured output instead of the
@@ -53,6 +55,7 @@ func newRootCmd() *cobra.Command {
   aiquokka deepseek  account balance
   aiquokka kiro     Kiro CLI monthly credits and overage status
   aiquokka agy      daily antigravity limits
+  aiquokka zai      Z.ai usage bundles and cash balance
 
   --watch           refresh every 60s; press r to refresh now, q/Ctrl+C to stop`,
 		Args:          cobra.NoArgs,
@@ -77,6 +80,7 @@ func newRootCmd() *cobra.Command {
 	root.AddCommand(newDeepseekCmd())
 	root.AddCommand(newKiroCmd())
 	root.AddCommand(newAntigravityCmd())
+	root.AddCommand(newZaiCmd())
 	return root
 }
 
