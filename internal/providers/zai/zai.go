@@ -12,8 +12,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/McKean/aiquokka/internal/httpx"
-	"github.com/McKean/aiquokka/internal/usage"
+	"github.com/star-plan/aiquokka/internal/httpx"
+	"github.com/star-plan/aiquokka/internal/usage"
 )
 
 // baseURL returns the Z.ai API base URL (override via ZAI_BASE_URL). The

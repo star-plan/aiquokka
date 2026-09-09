@@ -5,17 +5,17 @@
 package providers
 
 import (
-	"github.com/McKean/aiquokka/internal/provider"
-	"github.com/McKean/aiquokka/internal/providers/antigravity"
-	"github.com/McKean/aiquokka/internal/providers/claude"
-	"github.com/McKean/aiquokka/internal/providers/codex"
-	"github.com/McKean/aiquokka/internal/providers/copilot"
-	"github.com/McKean/aiquokka/internal/providers/cursor"
-	"github.com/McKean/aiquokka/internal/providers/deepseek"
-	"github.com/McKean/aiquokka/internal/providers/grok"
-	"github.com/McKean/aiquokka/internal/providers/kimi"
-	"github.com/McKean/aiquokka/internal/providers/kiro"
-	"github.com/McKean/aiquokka/internal/providers/zai"
+	"github.com/star-plan/aiquokka/internal/provider"
+	"github.com/star-plan/aiquokka/internal/providers/antigravity"
+	"github.com/star-plan/aiquokka/internal/providers/claude"
+	"github.com/star-plan/aiquokka/internal/providers/codex"
+	"github.com/star-plan/aiquokka/internal/providers/copilot"
+	"github.com/star-plan/aiquokka/internal/providers/cursor"
+	"github.com/star-plan/aiquokka/internal/providers/deepseek"
+	"github.com/star-plan/aiquokka/internal/providers/grok"
+	"github.com/star-plan/aiquokka/internal/providers/kimi"
+	"github.com/star-plan/aiquokka/internal/providers/kiro"
+	"github.com/star-plan/aiquokka/internal/providers/zai"
 )
 
 // All returns every built-in provider in display / CLI order.

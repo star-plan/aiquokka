@@ -5,8 +5,8 @@ package provider
 import (
 	"context"
 
-	"github.com/McKean/aiquokka/internal/credential"
-	"github.com/McKean/aiquokka/internal/usage"
+	"github.com/star-plan/aiquokka/internal/credential"
+	"github.com/star-plan/aiquokka/internal/usage"
 )
 
 // Provider is one quota source. Implementations are registered once in

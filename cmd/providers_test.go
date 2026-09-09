@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/McKean/aiquokka/internal/credential"
+	"github.com/star-plan/aiquokka/internal/credential"
 )
 
 func TestProviderRegistryBuildsAggregateAndCommands(t *testing.T) {

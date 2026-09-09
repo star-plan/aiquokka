@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/McKean/aiquokka/internal/httpx"
-	"github.com/McKean/aiquokka/internal/usage"
+	"github.com/star-plan/aiquokka/internal/httpx"
+	"github.com/star-plan/aiquokka/internal/usage"
 )
 
 // baseURL is the Kimi Code coding platform default.

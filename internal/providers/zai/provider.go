@@ -3,7 +3,7 @@ package zai
 import (
 	"context"
 
-	"github.com/McKean/aiquokka/internal/usage"
+	"github.com/star-plan/aiquokka/internal/usage"
 )
 
 // Provider adapts the Z.ai fetcher to the shared provider.Provider contract.

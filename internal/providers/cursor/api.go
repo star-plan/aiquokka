@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/McKean/aiquokka/internal/httpx"
-	"github.com/McKean/aiquokka/internal/usage"
+	"github.com/star-plan/aiquokka/internal/httpx"
+	"github.com/star-plan/aiquokka/internal/usage"
 )
 
 var apiBase = "https://api2.cursor.sh"

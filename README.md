@@ -17,7 +17,7 @@ already stores (or your existing API key). No tokens to paste, no config.
 ## Install
 
 ```sh
-go install github.com/McKean/aiquokka@latest
+go install github.com/star-plan/aiquokka@latest
 ```
 
 Requires Go (macOS: `brew install go`, Linux: use your package manager or https://go.dev/dl/).

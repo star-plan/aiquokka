@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/McKean/aiquokka/internal/credential"
+	"github.com/star-plan/aiquokka/internal/credential"
 )
 
 func TestReadOnlyLeavesCredentialStoreUnchanged(t *testing.T) {

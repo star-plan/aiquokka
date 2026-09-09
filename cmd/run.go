@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/McKean/aiquokka/internal/credential"
-	"github.com/McKean/aiquokka/internal/provider"
-	"github.com/McKean/aiquokka/internal/usage"
+	"github.com/star-plan/aiquokka/internal/credential"
+	"github.com/star-plan/aiquokka/internal/provider"
+	"github.com/star-plan/aiquokka/internal/usage"
 	"gopkg.in/yaml.v3"
 )
 

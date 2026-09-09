@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/McKean/aiquokka/internal/usage"
+	"github.com/star-plan/aiquokka/internal/usage"
 )
 
 // credentials is a resolved Kimi bearer token, optionally refreshable.

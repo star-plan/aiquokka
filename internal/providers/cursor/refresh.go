@@ -8,8 +8,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/McKean/aiquokka/internal/credential"
-	"github.com/McKean/aiquokka/internal/httpx"
+	"github.com/star-plan/aiquokka/internal/credential"
+	"github.com/star-plan/aiquokka/internal/httpx"
 )
 
 var tokenEndpoint = "https://api2.cursor.sh/oauth/token"

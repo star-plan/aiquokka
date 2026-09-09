@@ -3,7 +3,7 @@ package copilot
 import (
 	"context"
 
-	"github.com/McKean/aiquokka/internal/usage"
+	"github.com/star-plan/aiquokka/internal/usage"
 )
 
 // Provider adapts the Copilot fetcher to the shared provider.Provider contract.

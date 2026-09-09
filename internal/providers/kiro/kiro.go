@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/McKean/aiquokka/internal/usage"
+	"github.com/star-plan/aiquokka/internal/usage"
 )
 
 var (

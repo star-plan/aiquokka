@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/McKean/aiquokka/internal/credential"
+	"github.com/star-plan/aiquokka/internal/credential"
 )
 
 func TestCursorUsesProviderReportedPercent(t *testing.T) {

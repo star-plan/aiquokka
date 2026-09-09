@@ -1,4 +1,4 @@
-module github.com/McKean/aiquokka
+module github.com/star-plan/aiquokka
 
 go 1.26.5
 
