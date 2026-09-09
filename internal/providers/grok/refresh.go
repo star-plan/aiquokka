@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/McKean/aiquokka/internal/credential"
 	"github.com/McKean/aiquokka/internal/httpx"
 )
 
@@ -31,9 +33,34 @@ type tokenResponse struct {
 	ExpiresIn    int64  `json:"expires_in"`
 }
 
-// refresh exchanges the refresh token for a fresh access token, updates the
-// account in place, and persists it back to auth.json under storeKey.
-func refresh(ctx context.Context, a *account, storeKey string) error {
+// ensureFresh refreshes the account token according to the active credential
+// policy when the access token is expired (or force is set, e.g. after a 401).
+func ensureFresh(ctx context.Context, a *account, storeKey string, force bool) error {
+	if !force && !a.expired(time.Now()) {
+		return nil
+	}
+	policy := credential.PolicyFrom(ctx)
+	caps := capabilities()
+	return credential.Apply("Grok", policy, caps, credential.RefreshFuncs{
+		Persist: func() error {
+			return refreshAndPersist(ctx, a, storeKey)
+		},
+	})
+}
+
+// refreshAndPersist exchanges the refresh token, updates a in place, and
+// atomically writes the new tokens back to auth.json.
+func refreshAndPersist(ctx context.Context, a *account, storeKey string) error {
+	if err := refreshInPlace(ctx, a); err != nil {
+		return err
+	}
+	return persist(a, storeKey)
+}
+
+// refreshInPlace exchanges the refresh token and updates a in memory only.
+// Callers that persist must do so explicitly — Grok may rotate the refresh
+// token, so discarding the in-memory result is unsafe.
+func refreshInPlace(ctx context.Context, a *account) error {
 	if a.RefreshToken == "" || a.OIDCClientID == "" {
 		return fmt.Errorf("Grok token expired and cannot be refreshed (missing refresh token) — run `grok` to re-login")
 	}
@@ -76,14 +103,12 @@ func refresh(ctx context.Context, a *account, storeKey string) error {
 	if tr.ExpiresIn > 0 {
 		a.ExpiresAt = time.Now().Add(time.Duration(tr.ExpiresIn) * time.Second).UTC().Format(time.RFC3339Nano)
 	}
-	if err := persist(a, storeKey); err != nil {
-		fmt.Fprintf(os.Stderr, "aiquokka: warning: could not persist refreshed Grok token: %v\n", err)
-	}
 	return nil
 }
 
 // persist writes the refreshed token fields back into the account entry,
-// preserving every other field and account in auth.json.
+// preserving every other field and account in auth.json. Uses a temp file +
+// rename so a crash mid-write cannot truncate the store.
 func persist(a *account, storeKey string) error {
 	path, err := authPath()
 	if err != nil {
@@ -115,5 +140,33 @@ func persist(a *account, storeKey string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, out, 0o600)
+	out = append(out, '\n')
+	return writeFileAtomic(path, out, 0o600)
+}
+
+func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".auth-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer func() { _ = os.Remove(tmpName) }()
+
+	if err := tmp.Chmod(perm); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, path)
 }

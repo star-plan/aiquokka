@@ -42,16 +42,15 @@ type userResponse struct {
 }
 
 // Fetch reports Grok's usage-limit window (weekly for subscription accounts)
-// plus the subscription tier.
+// plus the subscription tier. Token refresh follows the credential policy
+// attached to ctx (default: ReadOnly — see --credential-policy).
 func Fetch(ctx context.Context) (*usage.Report, error) {
 	acc, storeKey, err := loadAccount()
 	if err != nil {
 		return nil, err
 	}
-	if acc.expired(time.Now()) {
-		if err := refresh(ctx, acc, storeKey); err != nil {
-			return nil, err
-		}
+	if err := ensureFresh(ctx, acc, storeKey, false); err != nil {
+		return nil, err
 	}
 
 	report := &usage.Report{Provider: "Grok"}
@@ -143,15 +142,15 @@ func getUser(ctx context.Context, acc *account, storeKey string) (*userResponse,
 	return &out, nil
 }
 
-// authedGet performs a bearer GET, refreshing the token and retrying once on a
-// 401/403.
+// authedGet performs a bearer GET, refreshing the token (per credential policy)
+// and retrying once on a 401/403.
 func authedGet(ctx context.Context, acc *account, storeKey, path string, out any) error {
 	status, err := doGet(ctx, acc.Key, path, out)
 	if err == nil {
 		return nil
 	}
 	if (status == http.StatusUnauthorized || status == http.StatusForbidden) && acc.RefreshToken != "" {
-		if rerr := refresh(ctx, acc, storeKey); rerr != nil {
+		if rerr := ensureFresh(ctx, acc, storeKey, true); rerr != nil {
 			return rerr
 		}
 		_, err = doGet(ctx, acc.Key, path, out)
