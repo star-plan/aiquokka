@@ -14,8 +14,8 @@ import (
 )
 
 // usageEndpoint is the ChatGPT backend on-demand usage endpoint (the same data
-// Codex shows as "5h limit" / "weekly limit").
-const usageEndpoint = "https://chatgpt.com/backend-api/wham/usage"
+// Codex shows as "5h limit" / "weekly limit"). Overridable in tests.
+var usageEndpoint = "https://chatgpt.com/backend-api/wham/usage"
 
 // window mirrors rate_limit.{primary,secondary}_window from /wham/usage.
 type window struct {
@@ -44,8 +44,9 @@ type usageResponse struct {
 	} `json:"rate_limit_reset_credits"`
 }
 
-// Fetch reads local Codex credentials and returns the current usage windows,
-// refreshing the ChatGPT access token once on a 401.
+// Fetch reads local Codex credentials and returns the current usage windows.
+// Token refresh on 401 follows the credential policy attached to ctx
+// (default: ReadOnly — see --credential-policy).
 func Fetch(ctx context.Context) (*usage.Report, error) {
 	auth, err := loadAuth()
 	if err != nil {
@@ -71,15 +72,16 @@ func Fetch(ctx context.Context) (*usage.Report, error) {
 	return report, nil
 }
 
-// getUsage performs the authed GET, refreshing and retrying once on 401.
+// getUsage performs the authed GET, refreshing (per credential policy) and
+// retrying once on 401.
 func getUsage(ctx context.Context, auth *authFile) (*usageResponse, error) {
 	resp, status, err := doUsage(ctx, auth.Tokens.AccessToken, auth.Tokens.AccountID)
 	if err == nil {
 		return resp, nil
 	}
 	if status == http.StatusUnauthorized && auth.Tokens.RefreshToken != "" {
-		if rerr := refresh(ctx, auth); rerr != nil {
-			return nil, fmt.Errorf("token expired and refresh failed: %w", rerr)
+		if rerr := ensureFresh(ctx, auth, true); rerr != nil {
+			return nil, rerr
 		}
 		resp, _, err = doUsage(ctx, auth.Tokens.AccessToken, auth.Tokens.AccountID)
 		if err != nil {

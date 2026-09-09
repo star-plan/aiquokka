@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/McKean/aiquokka/internal/credential"
 	"github.com/McKean/aiquokka/internal/httpx"
 )
 
@@ -31,8 +32,30 @@ type refreshResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-// refresh exchanges the refresh token, updates auth in place, and persists it.
-func refresh(ctx context.Context, auth *authFile) error {
+// ensureFresh refreshes the ChatGPT token according to the active credential
+// policy. Codex does not expose expiry in auth.json, so callers pass force on
+// a 401.
+func ensureFresh(ctx context.Context, auth *authFile, force bool) error {
+	if !force {
+		return nil
+	}
+	policy := credential.PolicyFrom(ctx)
+	return credential.Apply("Codex", policy, capabilities(), credential.RefreshFuncs{
+		Persist: func() error {
+			return refreshAndPersist(ctx, auth)
+		},
+	})
+}
+
+func refreshAndPersist(ctx context.Context, auth *authFile) error {
+	if err := refreshInPlace(ctx, auth); err != nil {
+		return err
+	}
+	return persist(auth)
+}
+
+// refreshInPlace exchanges the refresh token and updates auth in memory only.
+func refreshInPlace(ctx context.Context, auth *authFile) error {
 	reqBody, _ := json.Marshal(refreshRequest{
 		ClientID:     codexClientID,
 		GrantType:    "refresh_token",
@@ -71,10 +94,6 @@ func refresh(ctx context.Context, auth *authFile) error {
 		auth.Tokens.RefreshToken = rr.RefreshToken
 	}
 	auth.LastRefresh = time.Now().UTC().Format(time.RFC3339)
-
-	if err := persist(auth); err != nil {
-		fmt.Fprintf(os.Stderr, "aiquokka: warning: could not persist refreshed Codex token: %v\n", err)
-	}
 	return nil
 }
 
@@ -104,5 +123,6 @@ func persist(auth *authFile) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, out, 0o600)
+	out = append(out, '\n')
+	return credential.WriteFileAtomic(path, out, 0o600)
 }
