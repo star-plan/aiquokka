@@ -169,8 +169,8 @@ func extras(r *usageResponse) []usage.Fact {
 	var facts []usage.Fact
 	if rc := r.RateLimitResetCredits; rc != nil && rc.AvailableCount != nil {
 		v := strconv.FormatInt(*rc.AvailableCount, 10)
-		if rc.ApplicableAvailableCount != nil && *rc.ApplicableAvailableCount != *rc.AvailableCount {
-			v = fmt.Sprintf("%d (%d usable now)", *rc.AvailableCount, *rc.ApplicableAvailableCount)
+		if rc.ApplicableAvailableCount != nil {
+			v = fmt.Sprintf("%d / %d available", *rc.ApplicableAvailableCount, *rc.AvailableCount)
 		}
 		facts = append(facts, usage.Fact{Label: "Resets", Value: v})
 	}
