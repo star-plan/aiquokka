@@ -4,15 +4,18 @@ package cmd
 import (
 	"time"
 
+	"github.com/McKean/aiquokka/internal/credential"
 	"github.com/spf13/cobra"
 )
 
 // Global output-format flags: emit raw structured output instead of the
 // rendered bars.
 var (
-	jsonOut bool
-	yamlOut bool
-	watch   bool
+	jsonOut          bool
+	yamlOut          bool
+	watch            bool
+	listProvidersFlg bool
+	credentialPolicy = credential.DefaultPolicy
 )
 
 // watchInterval is how long --watch waits between refreshes.
@@ -25,33 +28,34 @@ func newRootCmd() *cobra.Command {
 		Long: `aiquokka reports the usage limits of your AI coding subscriptions.
 
   aiquokka          all providers at once
-  aiquokka claude   5-hour and weekly limits
-  aiquokka codex    weekly limit and reset info
-  aiquokka kimi     5-hour and weekly limits
-  aiquokka grok     weekly usage limit
-  aiquokka copilot  copilot chat/completions limits
-  aiquokka deepseek  account balance
-  aiquokka kiro     Kiro CLI monthly credits and overage status
-  aiquokka agy      daily antigravity limits
-  aiquokka zai      Z.ai usage bundles and cash balance
+  aiquokka --list   list available providers
+  aiquokka <name>   one provider (see --list)
 
-  --watch           refresh every 60s; press r to refresh now, q/Ctrl+C to stop`,
+  --watch                  refresh every 60s; press r to refresh now, q/Ctrl+C to stop
+  --credential-policy      readonly (default) | memory | persist`,
 		Args:          cobra.NoArgs,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if listProvidersFlg {
+				return listProviders(cmd.OutOrStdout())
+			}
 			return runAll(allProviders())
 		},
 	}
+
+	root.Flags().BoolVar(&listProvidersFlg, "list", false, "list available providers")
 	root.PersistentFlags().BoolVar(&jsonOut, "json", false, "emit raw JSON instead of rendered output")
 	root.PersistentFlags().BoolVar(&yamlOut, "yaml", false, "emit raw YAML instead of rendered output")
 	root.PersistentFlags().BoolVar(&yamlOut, "yml", false, "alias for --yaml")
 	root.PersistentFlags().BoolVarP(&watch, "watch", "w", false, "refresh every 60s (r refresh, q close)")
+	root.PersistentFlags().Var(newPolicyValue(&credentialPolicy), "credential-policy", "credential refresh policy: readonly, memory, or persist")
 	root.MarkFlagsMutuallyExclusive("json", "yaml")
 	root.MarkFlagsMutuallyExclusive("json", "yml")
 
-	for _, provider := range providerCommands {
-		root.AddCommand(newProviderCmd(provider))
+	root.AddCommand(newListCmd())
+	for _, p := range registry.All() {
+		root.AddCommand(newProviderCmd(p))
 	}
 	return root
 }
@@ -60,3 +64,30 @@ func newRootCmd() *cobra.Command {
 func Execute() error {
 	return newRootCmd().Execute()
 }
+
+// policyValue adapts credential.Policy to pflag.Value.
+type policyValue struct {
+	dst *credential.Policy
+}
+
+func newPolicyValue(dst *credential.Policy) *policyValue {
+	return &policyValue{dst: dst}
+}
+
+func (v *policyValue) String() string {
+	if v.dst == nil {
+		return credential.DefaultPolicy.String()
+	}
+	return v.dst.String()
+}
+
+func (v *policyValue) Set(s string) error {
+	p, err := credential.ParsePolicy(s)
+	if err != nil {
+		return err
+	}
+	*v.dst = p
+	return nil
+}
+
+func (v *policyValue) Type() string { return "policy" }

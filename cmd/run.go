@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/McKean/aiquokka/internal/credential"
+	"github.com/McKean/aiquokka/internal/provider"
 	"github.com/McKean/aiquokka/internal/usage"
 	"gopkg.in/yaml.v3"
 )
@@ -34,23 +36,19 @@ func emit(v any) error {
 	return enc.Encode(v)
 }
 
-// fetcher fetches a usage report for one provider.
-type fetcher func(ctx context.Context) (*usage.Report, error)
-
-// provider pairs a display name with its fetcher.
-type provider struct {
-	name  string
-	fetch fetcher
+// withCredentialPolicy attaches the global --credential-policy to ctx.
+func withCredentialPolicy(ctx context.Context) context.Context {
+	return credential.WithPolicy(ctx, credentialPolicy)
 }
 
 // run executes a single provider fetch and renders the result honoring --json.
 // With --watch, it refreshes every watchInterval until interrupted.
-func run(f fetcher) error {
+func run(p provider.Provider) error {
 	return maybeWatch(func(parent context.Context) error {
-		ctx, cancel := context.WithTimeout(parent, 20*time.Second)
+		ctx, cancel := context.WithTimeout(withCredentialPolicy(parent), 20*time.Second)
 		defer cancel()
 
-		report, err := f(ctx)
+		report, err := p.Fetch(ctx)
 		if err != nil {
 			return err
 		}
@@ -149,9 +147,9 @@ type fetchResult struct {
 // skeleton for configured providers and rewrites the view as each result
 // arrives. Non-TTY and --json/--yaml wait for every fetch, then emit once.
 // With --watch, the whole view refreshes every watchInterval until interrupted.
-func runAll(providers []provider) error {
+func runAll(providers []provider.Provider) error {
 	return maybeWatch(func(parent context.Context) error {
-		ctx, cancel := context.WithTimeout(parent, 30*time.Second)
+		ctx, cancel := context.WithTimeout(withCredentialPolicy(parent), 30*time.Second)
 		defer cancel()
 
 		if structured() {
@@ -164,7 +162,7 @@ func runAll(providers []provider) error {
 	})
 }
 
-func runAllStructured(ctx context.Context, providers []provider) error {
+func runAllStructured(ctx context.Context, providers []provider.Provider) error {
 	results := fetchAll(ctx, providers)
 	out := map[string]any{}
 	for _, r := range results {
@@ -182,7 +180,7 @@ func runAllStructured(ctx context.Context, providers []provider) error {
 
 // runAllBatch waits for every provider, then prints in fixed provider order.
 // Used when stdout is not a TTY (pipes, redirects).
-func runAllBatch(ctx context.Context, providers []provider) error {
+func runAllBatch(ctx context.Context, providers []provider.Provider) error {
 	results := fetchAll(ctx, providers)
 	now := time.Now()
 
@@ -231,10 +229,10 @@ type slot struct {
 // runAllLive paints a fixed-order skeleton, then rewrites the view in place as
 // each provider finishes. Unconfigured providers are dropped as soon as their
 // fetch reports NotConfigured.
-func runAllLive(ctx context.Context, providers []provider) error {
+func runAllLive(ctx context.Context, providers []provider.Provider) error {
 	slots := make([]slot, len(providers))
 	for i, p := range providers {
-		slots[i].name = p.name
+		slots[i].name = p.Name()
 	}
 
 	type event struct {
@@ -244,8 +242,8 @@ func runAllLive(ctx context.Context, providers []provider) error {
 	}
 	ch := make(chan event, len(providers))
 	for i, p := range providers {
-		go func(i int, p provider) {
-			r, err := p.fetch(ctx)
+		go func(i int, p provider.Provider) {
+			r, err := p.Fetch(ctx)
 			ch <- event{i: i, report: r, err: err}
 		}(i, p)
 	}
@@ -364,15 +362,15 @@ func writeProviderError(w io.Writer, name string, err error) {
 
 // fetchAll runs every provider concurrently and returns results in the same
 // order as providers.
-func fetchAll(ctx context.Context, providers []provider) []fetchResult {
+func fetchAll(ctx context.Context, providers []provider.Provider) []fetchResult {
 	results := make([]fetchResult, len(providers))
 	var wg sync.WaitGroup
 	for i, p := range providers {
 		wg.Add(1)
-		go func(i int, p provider) {
+		go func(i int, p provider.Provider) {
 			defer wg.Done()
-			r, err := p.fetch(ctx)
-			results[i] = fetchResult{name: p.name, report: r, err: err}
+			r, err := p.Fetch(ctx)
+			results[i] = fetchResult{name: p.Name(), report: r, err: err}
 		}(i, p)
 	}
 	wg.Wait()
