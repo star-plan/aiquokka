@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/McKean/aiquokka/internal/credential"
 	"github.com/McKean/aiquokka/internal/httpx"
 )
 
@@ -29,9 +30,29 @@ type refreshResponse struct {
 	ExpiresIn    int64  `json:"expires_in"`
 }
 
-// refresh exchanges the refresh token for a fresh access token, updates o in
-// place, and persists the result back to the credentials file.
-func refresh(ctx context.Context, o *oauth) error {
+// ensureFresh refreshes the OAuth token according to the active credential
+// policy when the access token is expired (or force is set).
+func ensureFresh(ctx context.Context, o *oauth, force bool) error {
+	if !force && !o.expired(time.Now()) {
+		return nil
+	}
+	policy := credential.PolicyFrom(ctx)
+	return credential.Apply("Claude", policy, capabilities(), credential.RefreshFuncs{
+		Persist: func() error {
+			return refreshAndPersist(ctx, o)
+		},
+	})
+}
+
+func refreshAndPersist(ctx context.Context, o *oauth) error {
+	if err := refreshInPlace(ctx, o); err != nil {
+		return err
+	}
+	return persist(ctx, o)
+}
+
+// refreshInPlace exchanges the refresh token and updates o in memory only.
+func refreshInPlace(ctx context.Context, o *oauth) error {
 	if o.RefreshToken == "" {
 		return fmt.Errorf("access token expired and no refresh token available — run `claude` to re-login")
 	}
@@ -54,10 +75,6 @@ func refresh(ctx context.Context, o *oauth) error {
 		}
 		if rr.ExpiresIn > 0 {
 			o.ExpiresAt = time.Now().Add(time.Duration(rr.ExpiresIn) * time.Second).UnixMilli()
-		}
-		if err := persist(ctx, o); err != nil {
-			// Non-fatal: we still have a usable in-memory token.
-			fmt.Fprintf(os.Stderr, "aiquokka: warning: could not persist refreshed token: %v\n", err)
 		}
 		return nil
 	}
@@ -123,5 +140,6 @@ func persist(ctx context.Context, o *oauth) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, out, 0o600)
+	out = append(out, '\n')
+	return credential.WriteFileAtomic(path, out, 0o600)
 }
