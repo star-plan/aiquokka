@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/McKean/aiquokka/internal/grok"
+	"github.com/McKean/aiquokka/internal/providers/grok"
 	"github.com/spf13/cobra"
 )
 

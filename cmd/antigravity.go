@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/McKean/aiquokka/internal/antigravity"
+	"github.com/McKean/aiquokka/internal/providers/antigravity"
 	"github.com/spf13/cobra"
 )
 

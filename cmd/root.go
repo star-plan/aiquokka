@@ -4,15 +4,15 @@ package cmd
 import (
 	"time"
 
-	"github.com/McKean/aiquokka/internal/antigravity"
-	"github.com/McKean/aiquokka/internal/claude"
-	"github.com/McKean/aiquokka/internal/codex"
-	"github.com/McKean/aiquokka/internal/copilot"
-	"github.com/McKean/aiquokka/internal/deepseek"
-	"github.com/McKean/aiquokka/internal/grok"
-	"github.com/McKean/aiquokka/internal/kimi"
-	"github.com/McKean/aiquokka/internal/kiro"
-	"github.com/McKean/aiquokka/internal/zai"
+	"github.com/McKean/aiquokka/internal/providers/antigravity"
+	"github.com/McKean/aiquokka/internal/providers/claude"
+	"github.com/McKean/aiquokka/internal/providers/codex"
+	"github.com/McKean/aiquokka/internal/providers/copilot"
+	"github.com/McKean/aiquokka/internal/providers/deepseek"
+	"github.com/McKean/aiquokka/internal/providers/grok"
+	"github.com/McKean/aiquokka/internal/providers/kimi"
+	"github.com/McKean/aiquokka/internal/providers/kiro"
+	"github.com/McKean/aiquokka/internal/providers/zai"
 	"github.com/spf13/cobra"
 )
 

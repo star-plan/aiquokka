@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/McKean/aiquokka/internal/deepseek"
+	"github.com/McKean/aiquokka/internal/providers/deepseek"
 	"github.com/spf13/cobra"
 )
 
