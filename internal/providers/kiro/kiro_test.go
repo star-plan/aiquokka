@@ -4,6 +4,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/McKean/aiquokka/internal/credential"
 )
 
 func TestParseUsage(t *testing.T) {
@@ -53,5 +55,21 @@ func TestParseUsageUsesNextYearForPastReset(t *testing.T) {
 func TestParseUsageRejectsChangedOutput(t *testing.T) {
 	if _, err := parseUsage("Estimated Usage | KIRO PRO", time.Now()); err == nil {
 		t.Fatal("expected missing credits error")
+	}
+}
+
+func TestKiroKeepsOfficialCLICredentialOwnership(t *testing.T) {
+	caps := New().Capabilities()
+	if !caps.OfficialCLIRefresh {
+		t.Fatal("Kiro should refresh only via its official CLI")
+	}
+	if caps.RefreshInMemory || caps.RefreshAndPersist {
+		t.Fatal("Kiro must not refresh or persist credentials itself")
+	}
+	if err := caps.Allows(credential.ReadOnly); err != nil {
+		t.Fatalf("ReadOnly should be allowed: %v", err)
+	}
+	if err := caps.Allows(credential.RefreshAndPersist); err == nil {
+		t.Fatal("persist must be rejected — Kiro CLI owns the credential store")
 	}
 }
