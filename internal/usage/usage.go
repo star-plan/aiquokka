@@ -10,6 +10,8 @@ type Window struct {
 	Label string `json:"label" yaml:"label"`
 	// UsedPercent is how much of the window has been consumed, 0-100.
 	// It is nil when the provider does not report a percentage.
+	// The terminal renderer shows remaining (100 - UsedPercent) as "left";
+	// JSON/YAML keep this used value.
 	UsedPercent *float64 `json:"used_percent,omitempty" yaml:"used_percent,omitempty"`
 	// ResetsAt is when this window's allowance next resets. Zero if unknown.
 	ResetsAt time.Time `json:"resets_at,omitempty" yaml:"resets_at,omitempty"`

@@ -61,13 +61,16 @@ func renderWindow(win Window, now time.Time, maxLabel int) string {
 
 	pace := win.Pace(now)
 	if win.UsedPercent != nil {
-		pct := *win.UsedPercent
-		b.WriteString(bar(pct, pace, 24))
-		fmt.Fprintf(&b, " %5.1f%%", pct)
+		b.WriteString(bar(*win.UsedPercent, pace, 24))
+		fmt.Fprintf(&b, " %5.1f%% left", leftPercent(*win.UsedPercent))
 	} else if win.Used != nil && win.Limit != nil && *win.Limit > 0 {
-		pct := float64(*win.Used) / float64(*win.Limit) * 100
-		b.WriteString(bar(pct, pace, 24))
-		fmt.Fprintf(&b, " %5.1f%% (%d/%d)", pct, *win.Used, *win.Limit)
+		used := float64(*win.Used) / float64(*win.Limit) * 100
+		remain := *win.Limit - *win.Used
+		if remain < 0 {
+			remain = 0
+		}
+		b.WriteString(bar(used, pace, 24))
+		fmt.Fprintf(&b, " %5.1f%% left (%d/%d)", leftPercent(used), remain, *win.Limit)
 	} else if win.Remaining != nil {
 		b.WriteString(remainingBar(*win.Remaining, win.Currency, 24))
 	} else {
@@ -80,52 +83,77 @@ func renderWindow(win Window, now time.Time, maxLabel int) string {
 	return b.String()
 }
 
-// bar renders a colored progress bar for pct in [0,100]. When pace is in [0,1]
-// it draws a marker cell at the linear-pace position — where even consumption
-// over the window would put you right now — so you can see at a glance whether
-// you are ahead of or behind schedule.
-func bar(pct, pace float64, width int) string {
-	if pct < 0 {
-		pct = 0
+// FormatPercent renders v as a single-decimal percentage, e.g. "9.3%".
+func FormatPercent(v float64) string {
+	return fmt.Sprintf("%.1f%%", v)
+}
+
+// leftPercent is the remaining share of a used-percent window, clamped to 0–100.
+func leftPercent(used float64) float64 {
+	left := 100 - used
+	if left < 0 {
+		return 0
 	}
-	if pct > 100 {
-		pct = 100
+	if left > 100 {
+		return 100
 	}
-	filled := int(math.Round(pct / 100 * float64(width)))
-	color := colorGreen
-	switch {
-	case pct >= 90:
-		color = colorRed
-	case pct >= 70:
-		color = colorYellow
-	}
+	return left
+}
+
+// bar renders a remaining-quota bar. usedPct is how much has been consumed
+// (0–100); the filled cells are what is left. Remaining cells are dim so a
+// mostly-empty used window does not look "full". When pace is in [0,1] a cyan
+// marker sits at the expected remaining position under even consumption.
+func bar(usedPct, pace float64, width int) string {
+	left := leftPercent(usedPct)
+	filled := int(math.Round(left / 100 * float64(width)))
+	color := colorForLeft(left)
 
 	markerIdx := -1
 	if pace >= 0 {
-		markerIdx = int(math.Round(pace * float64(width)))
+		expectedLeft := 1 - pace
+		if expectedLeft < 0 {
+			expectedLeft = 0
+		}
+		if expectedLeft > 1 {
+			expectedLeft = 1
+		}
+		markerIdx = int(math.Round(expectedLeft * float64(width)))
 		if markerIdx >= width {
 			markerIdx = width - 1
 		}
 	}
 
 	var cells strings.Builder
+	cells.WriteByte('[')
 	for i := 0; i < width; i++ {
 		if i == markerIdx {
-			// The pace marker: a bright cell marking the on-track position.
-			glyph := "▓"
-			if i >= filled {
-				glyph = "▒"
+			glyph := "▒"
+			if i < filled {
+				glyph = "▓"
 			}
-			fmt.Fprintf(&cells, "%s%s%s", colorPace, glyph, color)
+			fmt.Fprintf(&cells, "%s%s%s", colorPace, glyph, colorReset)
 			continue
 		}
 		if i < filled {
-			cells.WriteString("█")
+			fmt.Fprintf(&cells, "%s█%s", color, colorReset)
 		} else {
-			cells.WriteString("░")
+			fmt.Fprintf(&cells, "%s░%s", colorDim, colorReset)
 		}
 	}
-	return fmt.Sprintf("%s[%s]%s", color, cells.String(), colorReset)
+	cells.WriteByte(']')
+	return cells.String()
+}
+
+func colorForLeft(left float64) string {
+	switch {
+	case left < 15:
+		return colorRed
+	case left <= 40:
+		return colorYellow
+	default:
+		return colorGreen
+	}
 }
 
 // remainingBar draws a bar for a prepaid balance. The starting amount is
@@ -136,18 +164,20 @@ func remainingBar(amount float64, currency string, width int) string {
 	if amount <= 0 {
 		filled = 0
 	}
-	color := colorRemaining
+	fillColor := colorRemaining
 	if amount <= 0 {
-		color = colorRed
+		fillColor = colorRed
 	}
 	var cells strings.Builder
+	cells.WriteByte('[')
 	for i := 0; i < filled; i++ {
-		cells.WriteString("█")
+		fmt.Fprintf(&cells, "%s█%s", fillColor, colorReset)
 	}
 	for i := filled; i < width; i++ {
-		cells.WriteString("░")
+		fmt.Fprintf(&cells, "%s░%s", colorDim, colorReset)
 	}
-	return fmt.Sprintf("%s[%s]%s %s", color, cells.String(), colorReset, FormatMoney(amount, currency))
+	cells.WriteByte(']')
+	return fmt.Sprintf("%s %s", cells.String(), FormatMoney(amount, currency))
 }
 
 // FormatMoney renders an amount with a familiar symbol for common currencies.
@@ -195,6 +225,7 @@ const (
 	colorRed       = "\033[31m"
 	colorYellow    = "\033[33m"
 	colorGreen     = "\033[32m"
+	colorDim       = "\033[90m" // remaining / unused cells
 	colorPace      = "\033[96m" // bright cyan — the on-track pace marker
 	colorRemaining = "\033[92m" // bright green — a remaining prepaid balance
 )
