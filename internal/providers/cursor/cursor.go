@@ -96,8 +96,12 @@ func annotateSource(report *usage.Report, c Credential) {
 	report.Extra = append(report.Extra, usage.Fact{Label: "Source", Value: string(c.Source)})
 }
 
+func debugEnabled() bool {
+	return os.Getenv("AIQUOKKA_DEBUG") != ""
+}
+
 func debugf(format string, args ...any) {
-	if os.Getenv("AIQUOKKA_DEBUG") == "" {
+	if !debugEnabled() {
 		return
 	}
 	fmt.Fprintf(os.Stderr, "aiquokka cursor: "+format+"\n", args...)

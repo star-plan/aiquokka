@@ -142,9 +142,13 @@ func buildReport(period periodUsage, planName string) *usage.Report {
 				Label: "API", Value: usage.FormatPercent(u.APIPercentUsed.value) + " used",
 			})
 		}
-		debugf("planUsage total=%v auto=%v api=%v displayMessage=%q",
+	}
+	if u := period.PlanUsage; u != nil {
+		debugf("planUsage total=%s auto=%s api=%s displayMessage=%q",
 			numDebug(u.TotalPercentUsed), numDebug(u.AutoPercentUsed), numDebug(u.APIPercentUsed),
 			strings.TrimSpace(period.DisplayMessage))
+	} else {
+		debugf("planUsage missing displayMessage=%q", strings.TrimSpace(period.DisplayMessage))
 	}
 	if s := period.SpendLimitUsage; s != nil && s.IndividualUsed.set {
 		used := formatCents(s.IndividualUsed.value)
@@ -160,7 +164,12 @@ func buildReport(period periodUsage, planName string) *usage.Report {
 		}
 	}
 	if msg := strings.TrimSpace(period.DisplayMessage); msg != "" {
-		report.Extra = append(report.Extra, usage.Fact{Label: "⚠ Provider", Value: msg})
+		// displayMessage often disagrees with totalPercentUsed (a different
+		// cap or stale dashboard copy). Only show it when there is no
+		// authoritative percentage, or when debugging.
+		if window.UsedPercent == nil || debugEnabled() {
+			report.Extra = append(report.Extra, usage.Fact{Label: "⚠ Provider", Value: msg})
+		}
 	}
 	return report
 }

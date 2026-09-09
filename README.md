@@ -109,9 +109,9 @@ burning faster than the window.
   5h       [████████████████████▒░░░]  84.0% left  ← past the marker: plenty left
 ```
 
-`aiquokka --help` repeats this legend. Cursor's `⚠ Provider:` line is the raw
-`displayMessage` from Cursor, not a conclusion aiquokka drew from the
-percentage.
+`aiquokka --help` repeats this legend. Cursor's `displayMessage` is omitted
+when a billing percentage is present (it often describes a different cap);
+`AIQUOKKA_DEBUG=1` prints it as `⚠ Provider`.
 
 ## How it works
 

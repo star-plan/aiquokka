@@ -267,11 +267,46 @@ func TestBuildReportFormatsPercentsAndProviderMessage(t *testing.T) {
 	if got["API"] != "0.0% used" {
 		t.Fatalf("API = %q, want 0.0%% used", got["API"])
 	}
-	if got["⚠ Provider"] != "You've hit your usage limit" {
+	if _, ok := got["⚠ Provider"]; ok {
+		t.Fatalf("displayMessage must stay hidden when totalPercentUsed is set: Extra=%+v", report.Extra)
+	}
+}
+
+func TestBuildReportShowsProviderMessageWithoutPercentage(t *testing.T) {
+	var period periodUsage
+	body := `{"displayMessage": "Usage is billed to your organization"}`
+	if err := json.Unmarshal([]byte(body), &period); err != nil {
+		t.Fatal(err)
+	}
+	report := buildReport(period, "")
+	got := map[string]string{}
+	for _, f := range report.Extra {
+		got[f.Label] = f.Value
+	}
+	if got["⚠ Provider"] != "Usage is billed to your organization" {
 		t.Fatalf("Provider = %q, Extra=%+v", got["⚠ Provider"], report.Extra)
 	}
-	if _, ok := got["Note"]; ok {
-		t.Fatal("displayMessage must not be labelled Note")
+}
+
+func TestBuildReportShowsProviderMessageInDebug(t *testing.T) {
+	t.Setenv("AIQUOKKA_DEBUG", "1")
+	var period periodUsage
+	body := `{
+		"planUsage": {"totalPercentUsed": 8.7},
+		"displayMessage": "You've hit your usage limit"
+	}`
+	if err := json.Unmarshal([]byte(body), &period); err != nil {
+		t.Fatal(err)
+	}
+	report := buildReport(period, "Pro")
+	found := false
+	for _, f := range report.Extra {
+		if f.Label == "⚠ Provider" && f.Value == "You've hit your usage limit" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("debug mode should surface displayMessage: Extra=%+v", report.Extra)
 	}
 }
 
