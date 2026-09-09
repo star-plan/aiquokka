@@ -134,14 +134,17 @@ func buildReport(period periodUsage, planName string) *usage.Report {
 	if u := period.PlanUsage; u != nil {
 		if u.AutoPercentUsed.set {
 			report.Extra = append(report.Extra, usage.Fact{
-				Label: "Auto", Value: formatPercent(u.AutoPercentUsed.value),
+				Label: "Auto", Value: usage.FormatPercent(u.AutoPercentUsed.value) + " used",
 			})
 		}
 		if u.APIPercentUsed.set {
 			report.Extra = append(report.Extra, usage.Fact{
-				Label: "API", Value: formatPercent(u.APIPercentUsed.value),
+				Label: "API", Value: usage.FormatPercent(u.APIPercentUsed.value) + " used",
 			})
 		}
+		debugf("planUsage total=%v auto=%v api=%v displayMessage=%q",
+			numDebug(u.TotalPercentUsed), numDebug(u.AutoPercentUsed), numDebug(u.APIPercentUsed),
+			strings.TrimSpace(period.DisplayMessage))
 	}
 	if s := period.SpendLimitUsage; s != nil && s.IndividualUsed.set {
 		used := formatCents(s.IndividualUsed.value)
@@ -157,13 +160,16 @@ func buildReport(period periodUsage, planName string) *usage.Report {
 		}
 	}
 	if msg := strings.TrimSpace(period.DisplayMessage); msg != "" {
-		report.Extra = append(report.Extra, usage.Fact{Label: "Note", Value: msg})
+		report.Extra = append(report.Extra, usage.Fact{Label: "⚠ Provider", Value: msg})
 	}
 	return report
 }
 
-func formatPercent(v float64) string {
-	return strconv.FormatFloat(v, 'f', -1, 64) + "%"
+func numDebug(n num) string {
+	if !n.set {
+		return "<missing>"
+	}
+	return strconv.FormatFloat(n.value, 'f', -1, 64)
 }
 
 func formatCents(cents float64) string {

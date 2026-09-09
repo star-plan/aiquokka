@@ -243,6 +243,38 @@ func TestFetchUsesDashboardAPIs(t *testing.T) {
 	}
 }
 
+func TestBuildReportFormatsPercentsAndProviderMessage(t *testing.T) {
+	var period periodUsage
+	body := `{
+		"planUsage": {
+			"totalPercentUsed": 8.7,
+			"autoPercentUsed": 9.348888888888888,
+			"apiPercentUsed": 0
+		},
+		"displayMessage": "You've hit your usage limit"
+	}`
+	if err := json.Unmarshal([]byte(body), &period); err != nil {
+		t.Fatal(err)
+	}
+	report := buildReport(period, "Pro")
+	got := map[string]string{}
+	for _, f := range report.Extra {
+		got[f.Label] = f.Value
+	}
+	if got["Auto"] != "9.3% used" {
+		t.Fatalf("Auto = %q, want 9.3%% used", got["Auto"])
+	}
+	if got["API"] != "0.0% used" {
+		t.Fatalf("API = %q, want 0.0%% used", got["API"])
+	}
+	if got["⚠ Provider"] != "You've hit your usage limit" {
+		t.Fatalf("Provider = %q, Extra=%+v", got["⚠ Provider"], report.Extra)
+	}
+	if _, ok := got["Note"]; ok {
+		t.Fatal("displayMessage must not be labelled Note")
+	}
+}
+
 func TestBuildReportPutsOnDemandInExtra(t *testing.T) {
 	var period periodUsage
 	body := `{
