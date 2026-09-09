@@ -4,30 +4,8 @@ package cmd
 import (
 	"time"
 
-	"github.com/McKean/aiquokka/internal/providers/antigravity"
-	"github.com/McKean/aiquokka/internal/providers/claude"
-	"github.com/McKean/aiquokka/internal/providers/codex"
-	"github.com/McKean/aiquokka/internal/providers/copilot"
-	"github.com/McKean/aiquokka/internal/providers/deepseek"
-	"github.com/McKean/aiquokka/internal/providers/grok"
-	"github.com/McKean/aiquokka/internal/providers/kimi"
-	"github.com/McKean/aiquokka/internal/providers/kiro"
-	"github.com/McKean/aiquokka/internal/providers/zai"
 	"github.com/spf13/cobra"
 )
-
-// allProviders is the set rendered when aiquokka is run with no subcommand.
-var allProviders = []provider{
-	{name: "Claude", fetch: claude.Fetch},
-	{name: "Codex", fetch: codex.Fetch},
-	{name: "Kimi", fetch: kimi.Fetch},
-	{name: "Grok", fetch: grok.Fetch},
-	{name: "Copilot", fetch: copilot.Fetch},
-	{name: "DeepSeek", fetch: deepseek.Fetch},
-	{name: "Kiro", fetch: kiro.Fetch},
-	{name: "Antigravity", fetch: antigravity.Fetch},
-	{name: "Z.ai", fetch: zai.Fetch},
-}
 
 // Global output-format flags: emit raw structured output instead of the
 // rendered bars.
@@ -62,7 +40,7 @@ func newRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAll(allProviders)
+			return runAll(allProviders())
 		},
 	}
 	root.PersistentFlags().BoolVar(&jsonOut, "json", false, "emit raw JSON instead of rendered output")
@@ -72,15 +50,9 @@ func newRootCmd() *cobra.Command {
 	root.MarkFlagsMutuallyExclusive("json", "yaml")
 	root.MarkFlagsMutuallyExclusive("json", "yml")
 
-	root.AddCommand(newClaudeCmd())
-	root.AddCommand(newCodexCmd())
-	root.AddCommand(newKimiCmd())
-	root.AddCommand(newGrokCmd())
-	root.AddCommand(newCopilotCmd())
-	root.AddCommand(newDeepseekCmd())
-	root.AddCommand(newKiroCmd())
-	root.AddCommand(newAntigravityCmd())
-	root.AddCommand(newZaiCmd())
+	for _, provider := range providerCommands {
+		root.AddCommand(newProviderCmd(provider))
+	}
 	return root
 }
 
