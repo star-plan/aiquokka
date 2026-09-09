@@ -50,7 +50,7 @@ func TestListProviders(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := buf.String()
-	for _, want := range []string{"claude", "codex", "grok", "antigravity (agy)"} {
+	for _, want := range []string{"claude", "codex", "cursor", "grok", "antigravity (agy)"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("list output missing %q:\n%s", want, out)
 		}

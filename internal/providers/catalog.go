@@ -10,6 +10,7 @@ import (
 	"github.com/McKean/aiquokka/internal/providers/claude"
 	"github.com/McKean/aiquokka/internal/providers/codex"
 	"github.com/McKean/aiquokka/internal/providers/copilot"
+	"github.com/McKean/aiquokka/internal/providers/cursor"
 	"github.com/McKean/aiquokka/internal/providers/deepseek"
 	"github.com/McKean/aiquokka/internal/providers/grok"
 	"github.com/McKean/aiquokka/internal/providers/kimi"
@@ -22,6 +23,7 @@ func All() []provider.Provider {
 	return []provider.Provider{
 		claude.New(),
 		codex.New(),
+		cursor.New(),
 		kimi.New(),
 		grok.New(),
 		copilot.New(),
