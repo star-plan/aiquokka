@@ -26,6 +26,9 @@ func TestWriteLiveBodyOrderAndSkeleton(t *testing.T) {
 	var b strings.Builder
 	writeLiveBody(&b, slots, time.Unix(0, 0).UTC())
 	out := b.String()
+	if !strings.HasPrefix(out, liveTitle+"\n\n") {
+		t.Fatalf("missing live title:\n%s", out)
+	}
 
 	// Kimi is skipped; order is Claude, Codex skeleton, Grok error.
 	claude := strings.Index(out, "Claude\n")
@@ -55,8 +58,12 @@ func TestWriteLiveBodyEmpty(t *testing.T) {
 	}
 	var b strings.Builder
 	writeLiveBody(&b, slots, time.Unix(0, 0).UTC())
-	if !strings.Contains(b.String(), "No configured providers found") {
-		t.Fatalf("expected empty-state message, got:\n%s", b.String())
+	out := b.String()
+	if !strings.HasPrefix(out, liveTitle+"\n\n") {
+		t.Fatalf("missing live title:\n%s", out)
+	}
+	if !strings.Contains(out, "No configured providers found") {
+		t.Fatalf("expected empty-state message, got:\n%s", out)
 	}
 }
 

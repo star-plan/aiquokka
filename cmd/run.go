@@ -217,6 +217,11 @@ func runAllBatch(ctx context.Context, providers []provider.Provider) error {
 // painting the first skeleton, so providers the user doesn't use rarely flash.
 const configProbeGrace = 80 * time.Millisecond
 
+// liveTitle gives the interactive aggregate view a little of aiquokka's
+// personality. It deliberately belongs only to the TTY renderer: piped and
+// structured output must remain easy for people and programs to consume.
+const liveTitle = "🦘 AIQuokka — curious, helpful, happily shipping"
+
 // slot is one provider's live-view state.
 type slot struct {
 	name   string
@@ -313,6 +318,9 @@ func paintLive(w io.Writer, slots []slot, now time.Time, prevLines int) int {
 
 // writeLiveBody renders the current fixed-order view into b.
 func writeLiveBody(b *strings.Builder, slots []slot, now time.Time) {
+	b.WriteString(liveTitle)
+	b.WriteString("\n\n")
+
 	var reports []*usage.Report
 	for _, s := range slots {
 		if s.done && !s.skip && s.err == nil && s.report != nil {
