@@ -50,9 +50,9 @@ aiquokka claude -w         # watch a single provider
 $ aiquokka claude
 Claude  (max/default_claude_max_5x)
 ───────────────────────────────────
-  5h           [██████░░░░░░░░░░░░░░░▒░░]  24.0%   resets in 33m (Mon 19:00)
-  Weekly       [███████████░░░▒░░░░░░░░░]  45.0%   resets in 2d20h (Thu 14:27)
-  Weekly Fable [██████████████▓█░░░░░░░░]  67.0%   resets in 2d20h (Thu 14:27)
+  5h           [██████████████████▒░░░░░]  76.0% left   resets in 33m (Mon 19:00)
+  Weekly       [█████████████▒░░░░░░░░░░]  55.0% left   resets in 2d20h (Thu 14:27)
+  Weekly Fable [████████▒░░░░░░░░░░░░░░░]  33.0% left   resets in 2d20h (Thu 14:27)
 ```
 
 Fable draws from the same weekly pool and may take up to half of it, so it is
@@ -96,16 +96,22 @@ extra:
 
 ## The pace marker
 
-Every bar carries a bright-cyan marker cell at the point where **even, linear
-usage** would put you at the current moment — the elapsed fraction of the
-window. If the filled bar falls short of the marker you're under pace (headroom
-to spare); if it's past the marker you're consuming faster than the window
-refills.
+Bars fill with **remaining** quota (`█` remaining, dim `░` already used).
+`--json` / `--yaml` still report `used_percent`.
+
+Every bar carries a bright-cyan marker at the remaining amount **even, linear
+usage** would leave you with right now. If the filled (remaining) bar extends
+past the marker you have headroom; if it falls short of the marker you are
+burning faster than the window.
 
 ```
-  Weekly   [███████████▓███████████░]  94.0%   ← marker buried inside: way over pace
-  5h       [████░░░░░░░░░░░░░░░░▒░░░]  16.0%   ← well behind the marker: plenty left
+  Weekly   [█▒░░░░░░░░░░░░░░░░░░░░░░]   6.0% left  ← short of marker: over pace
+  5h       [████████████████████▒░░░]  84.0% left  ← past the marker: plenty left
 ```
+
+`aiquokka --help` repeats this legend. Cursor's `⚠ Provider:` line is the raw
+`displayMessage` from Cursor, not a conclusion aiquokka drew from the
+percentage.
 
 ## How it works
 

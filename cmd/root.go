@@ -25,14 +25,20 @@ func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "aiquokka",
 		Short: "Check AI coding-assistant usage limits",
-		Long: `aiquokka reports the usage limits of your AI coding subscriptions.
+		Long: `aiquokka reports how much of each AI coding subscription is still left.
 
   aiquokka          all providers at once
   aiquokka --list   list available providers
   aiquokka <name>   one provider (see --list)
 
   --watch                  refresh every 60s; press r to refresh now, q/Ctrl+C to stop
-  --credential-policy      readonly (default) | memory | persist`,
+  --credential-policy      readonly (default) | memory | persist
+
+  bars:
+    █ remaining quota (green / yellow / red)
+    ░ used (dim)
+    cyan marker = where even pace would leave you now
+    percentages are remaining (left); --json/--yaml still report used_percent`,
 		Args:          cobra.NoArgs,
 		SilenceUsage:  true,
 		SilenceErrors: true,
