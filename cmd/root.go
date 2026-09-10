@@ -4,8 +4,9 @@ package cmd
 import (
 	"time"
 
-	"github.com/star-plan/aiquokka/internal/credential"
 	"github.com/spf13/cobra"
+	"github.com/star-plan/aiquokka/internal/buildinfo"
+	"github.com/star-plan/aiquokka/internal/credential"
 )
 
 // Global output-format flags: emit raw structured output instead of the
@@ -23,8 +24,9 @@ const watchInterval = 60 * time.Second
 
 func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "aiquokka",
-		Short: "Check AI coding-assistant usage limits",
+		Use:     "aiquokka",
+		Short:   "Check AI coding-assistant usage limits",
+		Version: buildinfo.Version,
 		Long: `aiquokka reports how much of each AI coding subscription is still left.
 
   aiquokka          all providers at once
@@ -49,6 +51,7 @@ func newRootCmd() *cobra.Command {
 			return runAll(allProviders())
 		},
 	}
+	root.SetVersionTemplate(versionOutput())
 
 	root.Flags().BoolVar(&listProvidersFlg, "list", false, "list available providers")
 	root.PersistentFlags().BoolVar(&jsonOut, "json", false, "emit raw JSON instead of rendered output")
@@ -64,6 +67,21 @@ func newRootCmd() *cobra.Command {
 		root.AddCommand(newProviderCmd(p))
 	}
 	return root
+}
+
+func versionOutput() string {
+	if buildinfo.Version == "dev" {
+		return "aiquokka dev\n"
+	}
+	return "aiquokka {{.Version}}\ncommit " + buildinfo.Commit + "\nbuilt " + buildDate() + "\n"
+}
+
+func buildDate() string {
+	date := buildinfo.Date
+	if len(date) >= len("2006-01-02") && date[4] == '-' && date[7] == '-' {
+		return date[:len("2006-01-02")]
+	}
+	return date
 }
 
 // Execute runs the root command.

@@ -1,8 +1,10 @@
 # aiquokka
 
 One command to see the usage limits of all your AI coding subscriptions —
-Claude, Codex, Kimi, Copilot, Grok, DeepSeek, Kiro, Antigravity, and Z.ai — reading the credentials each official CLI
+Claude, Codex, Cursor, Grok, Kimi, Copilot, DeepSeek, Kiro, Antigravity, and Z.ai — reading the credentials each official CLI
 already stores (or your existing API key). No tokens to paste, no config.
+
+Forked from [McKean/aiquokka](https://github.com/McKean/aiquokka) and maintained by star-plan.
 
 ![aiquokka demo](docs/demo.gif)
 
@@ -10,13 +12,26 @@ already stores (or your existing API key). No tokens to paste, no config.
 - **Only what you use** — providers you aren't logged into are skipped silently.
 - **Pace marker** — each bar shows where even, linear usage would put you right
   now, so you can tell at a glance if you're burning too fast.
-- **Auto token refresh** — expired OAuth tokens are refreshed and written back.
+- **Credential-safe by default** — credentials are only read unless you explicitly opt into a supported refresh policy.
 - **Scriptable** — `--json` / `--yaml` for machine-readable output.
 - **Live watch** — `--watch` / `-w` refreshes the view every 60 seconds.
 
 ## Install
 
 ```sh
+# Homebrew
+brew tap star-plan/tap
+brew install aiquokka
+```
+
+```powershell
+# Scoop
+scoop bucket add star-plan https://github.com/star-plan/scoop
+scoop install aiquokka
+```
+
+```sh
+# Go
 go install github.com/star-plan/aiquokka@latest
 ```
 
@@ -34,6 +49,7 @@ go build -o aiquokka .
 aiquokka           # all configured providers at once
 aiquokka claude    # 5-hour, weekly, and weekly Fable limits
 aiquokka codex     # weekly limit + remaining resets
+aiquokka cursor    # Cursor billing-cycle usage
 aiquokka kimi      # 5-hour and weekly limits
 aiquokka grok      # weekly usage limit + subscription tier
 aiquokka copilot   # copilot chat/completions limits
@@ -122,6 +138,7 @@ machine and queries the same usage endpoint that CLI uses.
 | --- | --- | --- |
 | `claude` | `~/.claude/.credentials.json`, or macOS Keychain (OAuth) | `api.anthropic.com/api/oauth/usage` |
 | `codex`  | `~/.codex/auth.json` (ChatGPT OAuth) | `chatgpt.com/backend-api/wham/usage` |
+| `cursor` | Cursor Agent `auth.json`, OS credential store, or Desktop `state.vscdb` | Cursor Dashboard API (`api2.cursor.sh`) |
 | `kimi`   | `~/.kimi-code` / `~/.kimi` OAuth, or `$KIMI_API_KEY` | `api.kimi.com/coding/v1/usages` |
 | `grok`   | `~/.grok/auth.json` (xAI OIDC) | `cli-chat-proxy.grok.com/v1/billing?format=credits` |
 | `copilot`| `~/.config/github-copilot/{apps,hosts}.json` | `api.github.com/copilot_internal/user` |
@@ -130,9 +147,12 @@ machine and queries the same usage endpoint that CLI uses.
 | `agy`    | `~/.gemini/antigravity-cli/antigravity-oauth-token` | `daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` |
 | `zai`    | `$ZAI_API_KEY`, or the zai provider in `~/.pi/agent/models.json` | `api.z.ai/api/biz/tokenAccounts/list/my`, `api.z.ai/api/biz/account/query-customer-account-report` |
 
-Every provider that uses a short-lived OAuth access token (all except the
-static API-key providers Kimi and DeepSeek) **refreshes automatically** when
-the token has expired and writes the new token back to the credential file.
+aiquokka is a credential consumer by default. Official CLIs own credentials;
+aiquokka does not refresh or modify them unless explicitly requested. The
+default `readonly` policy only consumes credentials. `memory` is an explicit
+opt-in and is available only where a provider can safely refresh in memory;
+`persist` is also an explicit opt-in and writes refreshed credentials only for
+providers that support it.
 
 ### Claude Code on macOS
 
@@ -152,6 +172,9 @@ Per-provider notes:
 
 - **Codex** reports a weekly window plus your remaining *reset credits* ("amount
   of resets").
+- **Cursor** discovers complete credential pairs from Cursor Agent, the OS
+  credential store, or Cursor Desktop; it queries Cursor's Dashboard API for
+  the current billing-cycle usage.
 - **Kimi** limits are only on the Kimi Code coding subscription; the OAuth token
   is auto-detected from the CLI, or set `KIMI_API_KEY` to an `sk-kimi-…` key.
 - **Grok** reports the weekly usage-limit window (the same figure the Grok CLI's

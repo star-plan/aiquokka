@@ -1,0 +1,73 @@
+version: 2
+
+project_name: aiquokka
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: windows
+    main: .
+    binary: aiquokka-windows-{{ .Arch }}
+    goos: [windows]
+    goarch: [amd64, arm64]
+    env: [CGO_ENABLED=0]
+    ldflags:
+      - -s -w -X github.com/star-plan/aiquokka/internal/buildinfo.Version={{ .Version }} -X github.com/star-plan/aiquokka/internal/buildinfo.Commit={{ .Commit }} -X github.com/star-plan/aiquokka/internal/buildinfo.Date={{ .Date }}
+  - id: macos
+    main: .
+    binary: aiquokka-macos-{{ .Arch }}
+    goos: [darwin]
+    goarch: [amd64, arm64]
+    env: [CGO_ENABLED=0]
+    ldflags:
+      - -s -w -X github.com/star-plan/aiquokka/internal/buildinfo.Version={{ .Version }} -X github.com/star-plan/aiquokka/internal/buildinfo.Commit={{ .Commit }} -X github.com/star-plan/aiquokka/internal/buildinfo.Date={{ .Date }}
+  - id: linux
+    main: .
+    binary: aiquokka-linux-{{ .Arch }}
+    goos: [linux]
+    goarch: [amd64, arm64]
+    env: [CGO_ENABLED=0]
+    ldflags:
+      - -s -w -X github.com/star-plan/aiquokka/internal/buildinfo.Version={{ .Version }} -X github.com/star-plan/aiquokka/internal/buildinfo.Commit={{ .Commit }} -X github.com/star-plan/aiquokka/internal/buildinfo.Date={{ .Date }}
+
+archives:
+  - id: binaries
+    formats: [binary]
+    name_template: "{{ .Binary }}"
+
+checksum:
+  name_template: SHA256SUMS
+
+changelog:
+  disable: true
+
+release:
+  github:
+    owner: star-plan
+    name: aiquokka
+  header: |
+    ## aiquokka v{{ .Version }}
+
+    First star-plan release of aiquokka.
+
+    ### Highlights
+
+    - Unified quota monitoring for Claude, Codex, Cursor, Grok, and more
+    - Cursor credential discovery for Agent and Desktop installations
+    - Remaining-quota bars, JSON/YAML output, and live watch mode
+    - Read-only credential handling by default
+    - Windows, macOS, and Linux binaries
+
+    ### Installation
+
+    Homebrew:
+
+        brew tap star-plan/tap
+        brew install aiquokka
+
+    Scoop:
+
+        scoop bucket add star-plan https://github.com/star-plan/scoop
+        scoop install aiquokka
