@@ -89,6 +89,62 @@ func TestRenderWindowShowsLeftNotUsed(t *testing.T) {
 	}
 }
 
+func TestRenderResetCreditsShowsSummaryAndEarliestThree(t *testing.T) {
+	now := time.Date(2026, time.September, 10, 12, 0, 0, 0, time.UTC)
+	applicable := int64(0)
+	expires := func(days int) *time.Time {
+		t := now.AddDate(0, 0, days)
+		return &t
+	}
+	report := &Report{Provider: "Codex", ResetCredits: &ResetCredits{
+		AvailableCount:           4,
+		ApplicableAvailableCount: &applicable,
+		Credits: []ResetCredit{
+			{ExpiresAt: expires(1)}, {ExpiresAt: expires(2)}, {ExpiresAt: expires(3)}, {ExpiresAt: expires(4)},
+		},
+	}}
+	var out bytes.Buffer
+	Render(&out, report, now)
+	got := out.String()
+	for _, want := range []string{"4 available · 0 applicable now", "#1", "#2", "#3", "+1 more with expiry"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "#4") {
+		t.Errorf("output should cap details at three:\n%s", got)
+	}
+}
+
+func TestRenderSingleResetCreditIncludesExpiryInline(t *testing.T) {
+	now := time.Date(2026, time.September, 10, 12, 0, 0, 0, time.UTC)
+	expires := now.Add(5 * time.Hour)
+	report := &Report{Provider: "Codex", ResetCredits: &ResetCredits{
+		AvailableCount: 1,
+		Credits:        []ResetCredit{{ExpiresAt: &expires}},
+	}}
+	var out bytes.Buffer
+	Render(&out, report, now)
+	if got := out.String(); !strings.Contains(got, "1 available · expires in 5h0m") {
+		t.Fatalf("output = %q, want inline single-credit expiry", got)
+	}
+}
+
+func TestRenderResetCreditsPreservesProviderTotalWhenDetailsAreCapped(t *testing.T) {
+	now := time.Date(2026, time.September, 10, 12, 0, 0, 0, time.UTC)
+	expires := now.Add(24 * time.Hour)
+	report := &Report{Provider: "Codex", ResetCredits: &ResetCredits{
+		AvailableCount: 10,
+		DetailsFetched: true,
+		Credits:        []ResetCredit{{ExpiresAt: &expires}, {ExpiresAt: &expires}},
+	}}
+	var out bytes.Buffer
+	Render(&out, report, now)
+	if got := out.String(); !strings.Contains(got, "10 available") || !strings.Contains(got, "details: 2 returned (provider reports 10)") {
+		t.Fatalf("output = %q, want authoritative total and capped-detail notice", got)
+	}
+}
+
 func TestColorForLeftThresholds(t *testing.T) {
 	if colorForLeft(41) != colorGreen {
 		t.Fatalf("41%% left should be green")

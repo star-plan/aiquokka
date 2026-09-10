@@ -60,13 +60,42 @@ type Report struct {
 	Plan string `json:"plan,omitempty" yaml:"plan,omitempty"`
 	// Windows are the rate-limit windows, in display order.
 	Windows []Window `json:"windows" yaml:"windows"`
-	// Extra holds provider-specific labelled facts (e.g. Codex reset counts)
-	// rendered as-is beneath the windows.
+	// Extra holds provider-specific labelled facts rendered as-is beneath the
+	// windows.
 	Extra []Fact `json:"extra,omitempty" yaml:"extra,omitempty"`
+	// ResetCredits is the optional per-credit reset allowance reported by a
+	// provider. It is separate from Extra so structured output can retain each
+	// credit's expiry rather than flattening it into display text.
+	ResetCredits *ResetCredits `json:"reset_credits,omitempty" yaml:"reset_credits,omitempty"`
 }
 
 // Fact is an arbitrary labelled value for provider-specific details.
 type Fact struct {
 	Label string `json:"label" yaml:"label"`
 	Value string `json:"value" yaml:"value"`
+}
+
+// ResetCredits summarizes reset allowances and, when the provider exposes
+// them, their individual details. AvailableCount remains authoritative even
+// when Credits is shorter because providers may cap the detail list.
+type ResetCredits struct {
+	AvailableCount           int64  `json:"available_count" yaml:"available_count"`
+	ApplicableAvailableCount *int64 `json:"applicable_available_count,omitempty" yaml:"applicable_available_count,omitempty"`
+	// DetailsFetched distinguishes a successful empty detail list from a
+	// best-effort detail request that was unavailable.
+	DetailsFetched bool          `json:"details_fetched,omitempty" yaml:"details_fetched,omitempty"`
+	Credits        []ResetCredit `json:"credits,omitempty" yaml:"credits,omitempty"`
+}
+
+// ResetCredit is one provider-issued allowance that can reset rate limits.
+// Times are pointers because providers may omit a grant time or issue a credit
+// that does not expire.
+type ResetCredit struct {
+	ID          string     `json:"id" yaml:"id"`
+	ResetType   string     `json:"reset_type,omitempty" yaml:"reset_type,omitempty"`
+	Status      string     `json:"status,omitempty" yaml:"status,omitempty"`
+	GrantedAt   *time.Time `json:"granted_at,omitempty" yaml:"granted_at,omitempty"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty" yaml:"expires_at,omitempty"`
+	Title       string     `json:"title,omitempty" yaml:"title,omitempty"`
+	Description string     `json:"description,omitempty" yaml:"description,omitempty"`
 }

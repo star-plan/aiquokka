@@ -53,6 +53,42 @@ func RenderAligned(w io.Writer, r *Report, now time.Time, labelWidth int) {
 	for _, f := range r.Extra {
 		fmt.Fprintf(w, "  %-14s %s\n", f.Label+":", f.Value)
 	}
+	if r.ResetCredits != nil {
+		renderResetCredits(w, r.ResetCredits, now)
+	}
+}
+
+// renderResetCredits keeps the normal terminal view glanceable: the summary
+// is always shown, followed by at most the three credits that expire first.
+func renderResetCredits(w io.Writer, credits *ResetCredits, now time.Time) {
+	value := fmt.Sprintf("%d available", credits.AvailableCount)
+	if credits.ApplicableAvailableCount != nil {
+		value = fmt.Sprintf("%s · %d applicable now", value, *credits.ApplicableAvailableCount)
+	}
+
+	expiring := make([]ResetCredit, 0, len(credits.Credits))
+	for _, credit := range credits.Credits {
+		if credit.ExpiresAt != nil {
+			expiring = append(expiring, credit)
+		}
+	}
+	if len(expiring) == 1 && credits.AvailableCount == 1 {
+		value += " · expires " + humanizeReset(*expiring[0].ExpiresAt, now)
+		fmt.Fprintf(w, "  %-14s %s\n", "Resets:", value)
+		return
+	}
+
+	fmt.Fprintf(w, "  %-14s %s\n", "Resets:", value)
+	for i, credit := range expiring {
+		if i == 3 {
+			fmt.Fprintf(w, "    +%d more with expiry\n", len(expiring)-i)
+			break
+		}
+		fmt.Fprintf(w, "    #%d             expires %s\n", i+1, humanizeReset(*credit.ExpiresAt, now))
+	}
+	if credits.DetailsFetched && int64(len(credits.Credits)) < credits.AvailableCount {
+		fmt.Fprintf(w, "    details: %d returned (provider reports %d)\n", len(credits.Credits), credits.AvailableCount)
+	}
 }
 
 func renderWindow(win Window, now time.Time, maxLabel int) string {
