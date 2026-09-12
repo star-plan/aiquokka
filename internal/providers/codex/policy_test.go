@@ -60,3 +60,15 @@ func TestRotatingRefreshTokenRejectsInMemoryPolicy(t *testing.T) {
 		t.Fatalf("ensureFresh = %v, want ErrPolicyNotSupported", err)
 	}
 }
+
+func TestAutoMissingRefreshTokenRequiresReauth(t *testing.T) {
+	auth := &authFile{Tokens: tokens{AccessToken: "expired"}}
+	err := ensureFresh(context.Background(), auth, true)
+	var reauth *credential.ReauthRequiredError
+	if !errors.As(err, &reauth) {
+		t.Fatalf("ensureFresh = %v, want ReauthRequiredError", err)
+	}
+	if reauth.Command != "codex login" {
+		t.Fatalf("Command = %q", reauth.Command)
+	}
+}

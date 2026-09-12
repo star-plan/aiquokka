@@ -11,7 +11,8 @@ func TestParsePolicy(t *testing.T) {
 		in   string
 		want Policy
 	}{
-		{"", ReadOnly},
+		{"", Auto},
+		{"auto", Auto},
 		{"readonly", ReadOnly},
 		{"read-only", ReadOnly},
 		{"memory", RefreshInMemory},
@@ -66,6 +67,22 @@ func TestApplyReadOnlyDoesNotInvokeRefresh(t *testing.T) {
 	}
 	if !errors.Is(err, ErrRefreshRequired) {
 		t.Fatalf("error = %v, want ErrRefreshRequired", err)
+	}
+}
+
+func TestApplyAutoPrefersPersistForRotatingToken(t *testing.T) {
+	called := false
+	err := Apply("Grok", Auto, Capabilities{
+		RefreshAndPersist:   true,
+		RotatesRefreshToken: true,
+	}, RefreshFuncs{
+		Persist: func() error { called = true; return nil },
+	})
+	if err != nil {
+		t.Fatalf("Apply(auto) = %v", err)
+	}
+	if !called {
+		t.Fatal("Auto must persist a rotating refresh token")
 	}
 }
 

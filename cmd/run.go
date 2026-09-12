@@ -3,9 +3,11 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"sync"
@@ -45,10 +47,7 @@ func withCredentialPolicy(ctx context.Context) context.Context {
 // With --watch, it refreshes every watchInterval until interrupted.
 func run(p provider.Provider) error {
 	return maybeWatch(func(parent context.Context) error {
-		ctx, cancel := context.WithTimeout(withCredentialPolicy(parent), 20*time.Second)
-		defer cancel()
-
-		report, err := p.Fetch(ctx)
+		report, err := fetchSingle(parent, p)
 		if err != nil {
 			return err
 		}
@@ -59,6 +58,53 @@ func run(p provider.Provider) error {
 		usage.Render(os.Stdout, report, time.Now())
 		return nil
 	})
+}
+
+// fetchSingle retries exactly once after a successful interactive official-CLI
+// login. It is deliberately only used by an explicitly selected provider;
+// aggregate, structured, watch, CI, and non-TTY commands never start login.
+func fetchSingle(parent context.Context, p provider.Provider) (*usage.Report, error) {
+	fetch := func() (*usage.Report, error) {
+		ctx, cancel := context.WithTimeout(withCredentialPolicy(parent), 20*time.Second)
+		defer cancel()
+		return p.Fetch(ctx)
+	}
+
+	report, err := fetch()
+	if err == nil || !mayInteractiveReauth() {
+		return report, err
+	}
+	var reauth *credential.ReauthRequiredError
+	if !errors.As(err, &reauth) || !isProviderLoginCommand(p, reauth.Command) {
+		return report, err
+	}
+	if err := runOfficialLogin(parent, reauth.Command); err != nil {
+		return nil, fmt.Errorf("%s sign-in failed: %w", p.Name(), err)
+	}
+	return fetch()
+}
+
+// mayInteractiveReauth encodes the narrow circumstances under which it is OK
+// to hand the terminal to an official CLI (which may open a browser).
+func mayInteractiveReauth() bool {
+	return !watch && !structured() && os.Getenv("CI") == "" && stdinIsTTY() && stdoutIsTTY()
+}
+
+func isProviderLoginCommand(p provider.Provider, command string) bool {
+	parts := strings.Fields(command)
+	return len(parts) == 2 && parts[1] == "login" && parts[0] == p.ID() &&
+		(parts[0] == "codex" || parts[0] == "grok")
+}
+
+// runOfficialLogin is a variable so command-level recovery can be tested
+// without spawning a real login flow.
+var runOfficialLogin = func(ctx context.Context, command string) error {
+	parts := strings.Fields(command)
+	cmd := exec.CommandContext(ctx, parts[0], parts[1:]...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 // maybeWatch runs fn once, or repeatedly every watchInterval when --watch is set.
@@ -365,6 +411,11 @@ func writeSkeleton(w io.Writer, name string) {
 func writeProviderError(w io.Writer, name string, err error) {
 	fmt.Fprintln(w, name)
 	fmt.Fprintln(w, strings.Repeat("─", len(name)))
+	var reauth *credential.ReauthRequiredError
+	if errors.As(err, &reauth) && reauth.Command != "" {
+		fmt.Fprintf(w, "  Sign-in required — run `%s`\n", reauth.Command)
+		return
+	}
 	fmt.Fprintf(w, "  %s\n", err.Error())
 }
 

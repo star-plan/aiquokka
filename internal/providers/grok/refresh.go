@@ -50,10 +50,30 @@ func ensureFresh(ctx context.Context, a *account, storeKey string, force bool) e
 // refreshAndPersist exchanges the refresh token, updates a in place, and
 // atomically writes the new tokens back to auth.json.
 func refreshAndPersist(ctx context.Context, a *account, storeKey string) error {
-	if err := refreshInPlace(ctx, a); err != nil {
+	path, err := authPath()
+	if err != nil {
 		return err
 	}
-	return persist(a, storeKey)
+	release, err := acquireAuthLock(ctx, path+".lock")
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	// Refresh tokens rotate. Reload after acquiring the same lock used by the
+	// official CLI so an older process cannot overwrite its newer token.
+	fresh, err := loadAccountByKey(storeKey)
+	if err != nil {
+		return err
+	}
+	if err := refreshInPlace(ctx, fresh); err != nil {
+		return grokReauthError(err)
+	}
+	if err := persist(fresh, storeKey); err != nil {
+		return err
+	}
+	*a = *fresh
+	return nil
 }
 
 // refreshInPlace exchanges the refresh token and updates a in memory only.
@@ -61,7 +81,7 @@ func refreshAndPersist(ctx context.Context, a *account, storeKey string) error {
 // token, so discarding the in-memory result is unsafe.
 func refreshInPlace(ctx context.Context, a *account) error {
 	if a.RefreshToken == "" || a.OIDCClientID == "" {
-		return fmt.Errorf("Grok token expired and cannot be refreshed (missing refresh token) — run `grok` to re-login")
+		return fmt.Errorf("missing refresh token")
 	}
 	form := url.Values{
 		"grant_type":    {"refresh_token"},
@@ -82,9 +102,6 @@ func refreshInPlace(ctx context.Context, a *account) error {
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		if strings.Contains(string(body), "invalid_grant") {
-			return fmt.Errorf("Grok refresh token is no longer valid — run `grok` to re-login")
-		}
 		return fmt.Errorf("refreshing Grok token: %s: %s", resp.Status, strings.TrimSpace(string(body)))
 	}
 	var tr tokenResponse
@@ -103,6 +120,34 @@ func refreshInPlace(ctx context.Context, a *account) error {
 		a.ExpiresAt = time.Now().Add(time.Duration(tr.ExpiresIn) * time.Second).UTC().Format(time.RFC3339Nano)
 	}
 	return nil
+}
+
+func grokReauthError(err error) error {
+	if err == nil || !terminalRefreshFailure(err.Error()) {
+		return err
+	}
+	return &credential.ReauthRequiredError{
+		Provider: "Grok",
+		Command:  "grok login",
+		Cause:    err,
+	}
+}
+
+func terminalRefreshFailure(s string) bool {
+	s = strings.ToLower(s)
+	for _, marker := range []string{"missing refresh token", "invalid_grant"} {
+		if strings.Contains(s, marker) {
+			return true
+		}
+	}
+	if strings.Contains(s, "refresh token") {
+		for _, marker := range []string{"expired", "revoked", "reused", "invalid"} {
+			if strings.Contains(s, marker) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // persist writes the refreshed token fields back into the account entry,

@@ -34,7 +34,7 @@ func newRootCmd() *cobra.Command {
   aiquokka <name>   one provider (see --list)
 
   --watch                  refresh every 60s; press r to refresh now, q/Ctrl+C to stop
-  --credential-policy      readonly (default) | memory | persist
+  --credential-policy      auto (default) | readonly | memory | persist
 
   bars:
     █ remaining quota (green / yellow / red)
@@ -58,7 +58,7 @@ func newRootCmd() *cobra.Command {
 	root.PersistentFlags().BoolVar(&yamlOut, "yaml", false, "emit raw YAML instead of rendered output")
 	root.PersistentFlags().BoolVar(&yamlOut, "yml", false, "alias for --yaml")
 	root.PersistentFlags().BoolVarP(&watch, "watch", "w", false, "refresh every 60s (r refresh, q close)")
-	root.PersistentFlags().Var(newPolicyValue(&credentialPolicy), "credential-policy", "credential refresh policy: readonly, memory, or persist")
+	root.PersistentFlags().Var(newPolicyValue(&credentialPolicy), "credential-policy", "credential refresh policy: auto, readonly, memory, or persist")
 	root.MarkFlagsMutuallyExclusive("json", "yaml")
 	root.MarkFlagsMutuallyExclusive("json", "yml")
 

@@ -66,8 +66,7 @@ type resetCreditResponse struct {
 }
 
 // Fetch reads local Codex credentials and returns the current usage windows.
-// Token refresh on 401 follows the credential policy attached to ctx
-// (default: ReadOnly — see --credential-policy).
+// Token refresh on 401 follows the credential policy attached to ctx.
 func Fetch(ctx context.Context) (*usage.Report, error) {
 	auth, err := loadAuth()
 	if err != nil {
@@ -112,11 +111,17 @@ func getUsage(ctx context.Context, auth *authFile) (*usageResponse, error) {
 	if err == nil {
 		return resp, nil
 	}
-	if status == http.StatusUnauthorized && auth.Tokens.RefreshToken != "" {
+	if status == http.StatusUnauthorized {
 		if rerr := ensureFresh(ctx, auth, true); rerr != nil {
 			return nil, rerr
 		}
-		resp, _, err = doUsage(ctx, auth.Tokens.AccessToken, auth.Tokens.AccountID)
+		// Reload the persisted credential before the one permitted retry. This
+		// also picks up fields the official CLI may preserve in auth.json.
+		refreshed, rerr := loadAuth()
+		if rerr != nil {
+			return nil, rerr
+		}
+		resp, _, err = doUsage(ctx, refreshed.Tokens.AccessToken, refreshed.Tokens.AccountID)
 		if err != nil {
 			return nil, err
 		}
@@ -163,11 +168,15 @@ func getResetCredits(ctx context.Context, auth *authFile) (*resetCreditsResponse
 	if err == nil {
 		return resp, nil
 	}
-	if status == http.StatusUnauthorized && auth.Tokens.RefreshToken != "" {
+	if status == http.StatusUnauthorized {
 		if rerr := ensureFresh(ctx, auth, true); rerr != nil {
 			return nil, rerr
 		}
-		resp, _, err = doResetCredits(ctx, auth.Tokens.AccessToken, auth.Tokens.AccountID)
+		refreshed, rerr := loadAuth()
+		if rerr != nil {
+			return nil, rerr
+		}
+		resp, _, err = doResetCredits(ctx, refreshed.Tokens.AccessToken, refreshed.Tokens.AccountID)
 		if err == nil {
 			return resp, nil
 		}

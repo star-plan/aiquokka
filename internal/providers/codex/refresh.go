@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/star-plan/aiquokka/internal/credential"
@@ -49,13 +50,16 @@ func ensureFresh(ctx context.Context, auth *authFile, force bool) error {
 
 func refreshAndPersist(ctx context.Context, auth *authFile) error {
 	if err := refreshInPlace(ctx, auth); err != nil {
-		return err
+		return reauthError(err)
 	}
 	return persist(auth)
 }
 
 // refreshInPlace exchanges the refresh token and updates auth in memory only.
 func refreshInPlace(ctx context.Context, auth *authFile) error {
+	if auth.Tokens.RefreshToken == "" {
+		return fmt.Errorf("missing refresh token")
+	}
 	reqBody, _ := json.Marshal(refreshRequest{
 		ClientID:     codexClientID,
 		GrantType:    "refresh_token",
@@ -95,6 +99,36 @@ func refreshInPlace(ctx context.Context, auth *authFile) error {
 	}
 	auth.LastRefresh = time.Now().UTC().Format(time.RFC3339)
 	return nil
+}
+
+// reauthError turns terminal refresh failures into an error the command layer
+// can safely handle. Transient network and server failures remain unchanged.
+func reauthError(err error) error {
+	if err == nil || !terminalRefreshFailure(err.Error()) {
+		return err
+	}
+	return &credential.ReauthRequiredError{
+		Provider: "Codex",
+		Command:  "codex login",
+		Cause:    err,
+	}
+}
+
+func terminalRefreshFailure(s string) bool {
+	s = strings.ToLower(s)
+	for _, marker := range []string{"missing refresh token", "invalid_grant"} {
+		if strings.Contains(s, marker) {
+			return true
+		}
+	}
+	if strings.Contains(s, "refresh token") {
+		for _, marker := range []string{"expired", "revoked", "reused", "invalid"} {
+			if strings.Contains(s, marker) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // persist writes updated token fields back to auth.json, preserving unknown keys.

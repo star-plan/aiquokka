@@ -6,8 +6,9 @@ import "fmt"
 // support. The user chooses a Policy; the provider only advertises what is
 // safe. A Policy outside Capabilities must error — never silently degrade.
 type Capabilities struct {
-	// OfficialCLIRefresh means the provider can invoke its official CLI (or
-	// equivalent) to refresh credentials, then re-read the credential store.
+	// OfficialCLIRefresh means the provider's official CLI owns credential
+	// recovery. The command layer, not the provider, decides whether an
+	// interactive reauthentication is appropriate.
 	OfficialCLIRefresh bool
 	// RefreshInMemory means the provider can exchange a refresh token without
 	// writing the result back. Must be false when refresh rotates the refresh
@@ -26,6 +27,8 @@ type Capabilities struct {
 // descriptive error when the policy exceeds declared capabilities.
 func (c Capabilities) Allows(policy Policy) error {
 	switch policy {
+	case Auto:
+		return nil
 	case ReadOnly:
 		return nil
 	case RefreshInMemory:

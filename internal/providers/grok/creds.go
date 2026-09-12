@@ -64,9 +64,9 @@ func loadAccount() (*account, string, error) {
 		}
 		return nil, "", err
 	}
-	var accounts map[string]account
-	if err := json.Unmarshal(data, &accounts); err != nil {
-		return nil, "", fmt.Errorf("parsing %s: %w", path, err)
+	accounts, err := parseAccounts(path, data)
+	if err != nil {
+		return nil, "", err
 	}
 	for key, acc := range accounts {
 		if !strings.Contains(key, "x.ai") {
@@ -79,4 +79,35 @@ func loadAccount() (*account, string, error) {
 		return &a, key, nil
 	}
 	return nil, "", usage.NotConfigured("no usable x.ai account in %s — run `grok` to log in", path)
+}
+
+// loadAccountByKey reloads a particular account while holding auth.json.lock.
+// It deliberately never reuses a previously read refresh token: another Grok
+// process may have rotated it before this process acquired the lock.
+func loadAccountByKey(storeKey string) (*account, error) {
+	path, err := authPath()
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	accounts, err := parseAccounts(path, data)
+	if err != nil {
+		return nil, err
+	}
+	acc, ok := accounts[storeKey]
+	if !ok {
+		return nil, fmt.Errorf("account key %q vanished from auth.json", storeKey)
+	}
+	return &acc, nil
+}
+
+func parseAccounts(path string, data []byte) (map[string]account, error) {
+	var accounts map[string]account
+	if err := json.Unmarshal(data, &accounts); err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", path, err)
+	}
+	return accounts, nil
 }

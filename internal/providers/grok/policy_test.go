@@ -87,3 +87,22 @@ func TestRotatingRefreshTokenRejectsInMemoryPolicy(t *testing.T) {
 		t.Fatalf("error type %T, want *PolicyError", err)
 	}
 }
+
+func TestAutoMissingRefreshTokenRequiresReauth(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("GROK_HOME", dir)
+	if err := os.WriteFile(filepath.Join(dir, "auth.json"), []byte(`{
+  "account": {"key":"expired", "oidc_client_id":"client-1"}
+}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	a := &account{Key: "expired", OIDCClientID: "client-1"}
+	err := ensureFresh(context.Background(), a, "account", true)
+	var reauth *credential.ReauthRequiredError
+	if !errors.As(err, &reauth) {
+		t.Fatalf("ensureFresh = %v, want ReauthRequiredError", err)
+	}
+	if reauth.Command != "grok login" {
+		t.Fatalf("Command = %q", reauth.Command)
+	}
+}
