@@ -147,12 +147,11 @@ machine and queries the same usage endpoint that CLI uses.
 | `agy`    | `~/.gemini/antigravity-cli/antigravity-oauth-token` | `daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` |
 | `zai`    | `$ZAI_API_KEY`, or the zai provider in `~/.pi/agent/models.json` | `api.z.ai/api/biz/tokenAccounts/list/my`, `api.z.ai/api/biz/account/query-customer-account-report` |
 
-aiquokka is a credential consumer by default. Official CLIs own credentials;
-aiquokka does not refresh or modify them unless explicitly requested. The
-default `readonly` policy only consumes credentials. `memory` is an explicit
-opt-in and is available only where a provider can safely refresh in memory;
-`persist` is also an explicit opt-in and writes refreshed credentials only for
-providers that support it.
+aiquokka defaults to `auto`: it reads credentials normally, and silently
+refreshes only when a provider explicitly supports a safe recovery path. For
+rotating refresh tokens this means an atomic persisted refresh. Official CLIs
+continue to own identity; use `readonly` to guarantee aiquokka never changes a
+credential store.
 
 ### Choose a credential refresh policy
 
@@ -161,7 +160,10 @@ expired credential. It applies to every provider in that invocation; it does
 not change how aiquokka discovers credentials or switch accounts.
 
 ```sh
-# Default: read credentials only. Re-authenticate with the official CLI if needed.
+# Default: safely refresh supported credentials and persist rotated tokens.
+aiquokka codex
+
+# Never refresh or write credentials. Re-authenticate with the official CLI if needed.
 aiquokka --credential-policy readonly
 
 # Refresh an expired credential and write the result back, where supported.
@@ -171,7 +173,8 @@ aiquokka --credential-policy persist
 
 | Policy | Behaviour |
 | --- | --- |
-| `readonly` | Default. Never refreshes or writes credentials; re-login with the official CLI when they expire. |
+| `auto` | Default. Uses the provider's safe refresh mechanism; if refresh can no longer continue, asks for official-CLI sign-in. |
+| `readonly` | Never refreshes or writes credentials; re-login with the official CLI when they expire. |
 | `memory` | Refreshes only in the running process and never writes the result. It is rejected when a provider cannot safely support it. |
 | `persist` | Refreshes and atomically writes updated credentials, but only for providers that explicitly support it. |
 
