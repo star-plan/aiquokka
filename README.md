@@ -154,6 +154,33 @@ opt-in and is available only where a provider can safely refresh in memory;
 `persist` is also an explicit opt-in and writes refreshed credentials only for
 providers that support it.
 
+### Choose a credential refresh policy
+
+Use the global `--credential-policy` flag when a provider needs to refresh an
+expired credential. It applies to every provider in that invocation; it does
+not change how aiquokka discovers credentials or switch accounts.
+
+```sh
+# Default: read credentials only. Re-authenticate with the official CLI if needed.
+aiquokka --credential-policy readonly
+
+# Refresh an expired credential and write the result back, where supported.
+aiquokka --credential-policy persist codex
+aiquokka --credential-policy persist
+```
+
+| Policy | Behaviour |
+| --- | --- |
+| `readonly` | Default. Never refreshes or writes credentials; re-login with the official CLI when they expire. |
+| `memory` | Refreshes only in the running process and never writes the result. It is rejected when a provider cannot safely support it. |
+| `persist` | Refreshes and atomically writes updated credentials, but only for providers that explicitly support it. |
+
+`memory` is currently unsupported by all providers because their refresh
+tokens may rotate. `persist` is currently supported for Claude, Codex, Cursor,
+and Grok. For all other providers, use `readonly` and let their official CLI
+manage authentication. An unsupported policy fails clearly rather than falling
+back silently.
+
 ### Claude Code on macOS
 
 Claude Code stores its OAuth credential in `~/.claude/.credentials.json` or,
